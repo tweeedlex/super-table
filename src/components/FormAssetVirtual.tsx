@@ -20,6 +20,7 @@ type RowProps = {
   data: {
     items: Item[];
     updateItem: (index: number, value: number) => void;
+    addItemsAfter: (index: number, count: number, value: number) => void;
     setData: React.Dispatch<React.SetStateAction<Item[]>>;
   };
   index: number;
@@ -27,7 +28,7 @@ type RowProps = {
 };
 
 const RowVirtual = memo(({data, index, style}: RowProps) => {
-  const {items, updateItem, setData} = data;
+  const {items, updateItem, addItemsAfter, setData} = data;
   const item = items[index];
   const [localValue, setLocalValue] = useState(item.value);
   const [isModalVisible1, setIsModalVisible1] = useState(false);
@@ -40,16 +41,7 @@ const RowVirtual = memo(({data, index, style}: RowProps) => {
   };
 
   const handleDuplicate = () => {
-    setData(prevData => {
-      const newData = [...prevData];
-      const duplicateData = Array.from({length: localValue}, () => ({
-        value: item.value,
-        items: item.items,
-        isActive: item.isActive
-      }));
-      newData.splice(index + 1, 0, ...duplicateData);
-      return newData;
-    });
+    addItemsAfter(index, localValue, item.value);
   };
 
   return (
@@ -121,9 +113,10 @@ const RowVirtual = memo(({data, index, style}: RowProps) => {
   );
 }, areEqual);
 
-const createItemData = memoize((items, updateItem, setData) => ({
+const createItemData = memoize((items, updateItem, addItemsAfter, setData) => ({
   items,
   updateItem,
+  addItemsAfter,
   setData
 }));
 
@@ -159,7 +152,29 @@ const FormAssetVirtual = () => {
     });
   }, []);
 
-  const itemData = createItemData(data, updateItem, setData);
+  const addItemsAfter = useCallback((index: number, count: number, value: number) => {
+    setData(prevData => {
+      const newData = [...prevData];
+      const newItems = Array.from({length: count}, () => ({
+        value: value,
+        items: [
+          Array.from({length: 10}, (_, i) => ({
+            value: i,
+            isActive: i % 2 === 0
+          })),
+          Array.from({length: 20}, (_, i) => ({
+            value: i,
+            isActive: i % 2 === 0
+          })),
+        ],
+        isActive: value % 2 === 0
+      }));
+      newData.splice(index + 1, 0, ...newItems);
+      return newData;
+    });
+  }, []);
+
+  const itemData = createItemData(data, updateItem, addItemsAfter, setData);
 
   useLayoutEffect(() => {
     if (headerRef.current) {
@@ -194,7 +209,7 @@ const FormAssetVirtual = () => {
             itemSize={35}
             width={colWidth}
             itemData={itemData}
-            itemKey={(index, data) => data.items[index].value}
+            // itemKey={(index, data) => data.items[index].value}
           >
             {RowVirtual}
           </List>

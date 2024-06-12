@@ -30,47 +30,45 @@ const NestedArrayModal = ({ visible, onClose, nestedItems }: NestedArrayModalPro
           </div>
         </div>
         <div className="table-body">
-          {nestedItems.map((nestedItem, index) => (
-            <>
-              <div className="table-row">
-                <div className="table-cell" style={{width: '50px'}}>{index + 1}</div>
-                <div className="table-cell" style={{width: '100px'}}>
-                  <Input
-                    type="number"
-                    min={0}
-                    defaultValue={nestedItem.value}
-                  />
-                </div>
-                <div className="table-cell" style={{width: '100px'}}>
-                  <Input
-                    type="number"
-                    min={0}
-                    defaultValue={nestedItem.value}
-                  />
-                </div>
-                <div className="table-cell" style={{width: '100px'}}>
-                  <Input
-                    type="number"
-                    min={0}
-                    defaultValue={nestedItem.value}
-                  />
-                </div>
-                <div className="table-cell" style={{width: '100px'}}>
-                  <Input
-                    type="number"
-                    min={0}
-                    defaultValue={nestedItem.value}
-                  />
-                </div>
-                <div className="table-cell" style={{width: '100px'}}>
-                  <Input
-                    type="number"
-                    min={0}
-                    defaultValue={nestedItem.value}
-                  />
-                </div>
+          {nestedItems && nestedItems.map((nestedItem, index) => (
+            <div className="table-row" key={nestedItem.value}>
+              <div className="table-cell" style={{width: '50px'}}>{index + 1}</div>
+              <div className="table-cell" style={{width: '100px'}}>
+                <Input
+                  type="number"
+                  min={0}
+                  defaultValue={nestedItem.value}
+                />
               </div>
-            </>
+              <div className="table-cell" style={{width: '100px'}}>
+                <Input
+                  type="number"
+                  min={0}
+                  defaultValue={nestedItem.value}
+                />
+              </div>
+              <div className="table-cell" style={{width: '100px'}}>
+                <Input
+                  type="number"
+                  min={0}
+                  defaultValue={nestedItem.value}
+                />
+              </div>
+              <div className="table-cell" style={{width: '100px'}}>
+                <Input
+                  type="number"
+                  min={0}
+                  defaultValue={nestedItem.value}
+                />
+              </div>
+              <div className="table-cell" style={{width: '100px'}}>
+                <Input
+                  type="number"
+                  min={0}
+                  defaultValue={nestedItem.value}
+                />
+              </div>
+            </div>
           ))}
         </div>
       </div>
