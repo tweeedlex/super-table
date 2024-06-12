@@ -194,6 +194,7 @@ const FormAssetVirtual = () => {
             itemSize={35}
             width={colWidth}
             itemData={itemData}
+            itemKey={(index, data) => data.items[index].value}
           >
             {RowVirtual}
           </List>
