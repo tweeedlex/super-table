@@ -3,7 +3,7 @@ import { Modal, Button } from 'antd';
 type NestedArrayModalProps = {
   visible: boolean;
   onClose: () => void;
-  nestedItems: { items: number, isActive: boolean }[];
+  nestedItems: { value: number, isActive: boolean }[];
 };
 
 const NestedArrayModal = ({ visible, onClose, nestedItems }: NestedArrayModalProps) => {
@@ -20,7 +20,7 @@ const NestedArrayModal = ({ visible, onClose, nestedItems }: NestedArrayModalPro
     >
       {nestedItems.map((nestedItem, index) => (
         <div key={index} style={{ display: 'flex', marginBottom: '8px' }}>
-          <div style={{ width: '100px', padding: '8px' }}>{nestedItem.items}</div>
+          <div style={{ width: '100px', padding: '8px' }}>{nestedItem.value}</div>
         </div>
       ))}
     </Modal>

@@ -1,16 +1,17 @@
-import React, { memo, useState, useCallback, useRef, useLayoutEffect } from 'react';
+import React, {memo, useState, useCallback, useRef, useLayoutEffect} from 'react';
 import memoize from 'memoize-one';
-import { FixedSizeList as List, areEqual } from 'react-window';
-import { Button, Input } from "antd";
+import {FixedSizeList as List, areEqual} from 'react-window';
+import {Button, Input} from "antd";
 import './FormAssetVirtual.css';
 import NestedArrayModal from "./NestedArrayModal.tsx";
 
 type NestedItem = {
-  items: number;
+  value: number;
   isActive: boolean;
 };
 
 type Item = {
+  value: number;
   items: NestedItem[];
   isActive: boolean;
 };
@@ -25,23 +26,27 @@ type RowProps = {
   style: React.CSSProperties;
 };
 
-const RowVirtual = memo(({ data, index, style }: RowProps) => {
-  const { items, updateItem, setData } = data;
+const RowVirtual = memo(({data, index, style}: RowProps) => {
+  const {items, updateItem, setData} = data;
   const item = items[index];
-  const [localValue, setLocalValue] = useState(item.items[0].items); // Example for the first nested array item
+  const [localValue, setLocalValue] = useState(item.value);
   const [isModalVisible1, setIsModalVisible1] = useState(false);
   const [isModalVisible2, setIsModalVisible2] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = Number(e.target.value);
     setLocalValue(newValue);
-    updateItem(index, newValue);
+    // updateItem(index, newValue);
   };
 
   const handleDuplicate = () => {
     setData(prevData => {
       const newData = [...prevData];
-      const duplicateData = Array.from({ length: localValue }, () => ({ items: item.items, isActive: item.isActive }));
+      const duplicateData = Array.from({length: localValue}, () => ({
+        value: item.value,
+        items: item.items,
+        isActive: item.isActive
+      }));
       newData.splice(index + 1, 0, ...duplicateData);
       return newData;
     });
@@ -49,8 +54,8 @@ const RowVirtual = memo(({ data, index, style }: RowProps) => {
 
   return (
     <div style={style} className="table-row">
-      <div className="table-cell" style={{ width: '50px' }}>{index + 1}</div>
-      <div className="table-cell" style={{ width: '100px' }}>
+      <div className="table-cell" style={{width: '50px'}}>{index + 1}</div>
+      <div className="table-cell" style={{width: '100px'}}>
         <Input
           type="number"
           value={localValue}
@@ -58,7 +63,7 @@ const RowVirtual = memo(({ data, index, style }: RowProps) => {
           min={0}
         />
       </div>
-      <div className="table-cell" style={{ width: '100px' }}>
+      <div className="table-cell" style={{width: '100px'}}>
         <Input
           type="number"
           value={localValue}
@@ -66,7 +71,7 @@ const RowVirtual = memo(({ data, index, style }: RowProps) => {
           min={0}
         />
       </div>
-      <div className="table-cell" style={{ width: '100px' }}>
+      <div className="table-cell" style={{width: '100px'}}>
         <Input
           type="number"
           value={localValue}
@@ -74,7 +79,7 @@ const RowVirtual = memo(({ data, index, style }: RowProps) => {
           min={0}
         />
       </div>
-      <div className="table-cell" style={{ width: '100px' }}>
+      <div className="table-cell" style={{width: '100px'}}>
         <Input
           type="number"
           value={localValue}
@@ -82,7 +87,7 @@ const RowVirtual = memo(({ data, index, style }: RowProps) => {
           min={0}
         />
       </div>
-      <div className="table-cell" style={{ width: '100px' }}>
+      <div className="table-cell" style={{width: '100px'}}>
         <Input
           type="number"
           value={localValue}
@@ -91,13 +96,13 @@ const RowVirtual = memo(({ data, index, style }: RowProps) => {
         />
       </div>
 
-      <div className="table-cell" style={{ width: '100px' }}>
+      <div className="table-cell" style={{width: '100px'}}>
         <Button onClick={handleDuplicate}>Duplicate</Button>
       </div>
-      <div className="table-cell" style={{ width: '100px' }}>
+      <div className="table-cell" style={{width: '100px'}}>
         <Button onClick={() => setIsModalVisible1(true)}>Modal 1</Button>
       </div>
-      <div className="table-cell" style={{ width: '100px' }}>
+      <div className="table-cell" style={{width: '100px'}}>
         <Button onClick={() => setIsModalVisible2(true)}>Modal 2</Button>
       </div>
 
@@ -123,14 +128,15 @@ const createItemData = memoize((items, updateItem, setData) => ({
 }));
 
 const FormAssetVirtual = () => {
-  const initialData = Array.from({ length: 2000 }, (_, index) => ({
+  const initialData = Array.from({length: 2000}, (_, index) => ({
+    value: index,
     items: [
-      Array.from({ length: 10 }, (_, i) => ({
-        items: i,
+      Array.from({length: 10}, (_, i) => ({
+        value: i,
         isActive: i % 2 === 0
       })),
-      Array.from({ length: 10 }, (_, i) => ({
-        items: i,
+      Array.from({length: 10}, (_, i) => ({
+        value: i,
         isActive: i % 2 === 0
       })),
     ],
@@ -145,7 +151,10 @@ const FormAssetVirtual = () => {
   const updateItem = useCallback((index: number, value: number) => {
     setData(prevData => {
       const newData = [...prevData];
-      newData[index].items[0].items = value; // Example for the first nested array item
+      newData[index] = {
+        ...newData[index],
+        value: value,
+      };
       return newData;
     });
   }, []);
@@ -169,13 +178,13 @@ const FormAssetVirtual = () => {
       <div className="table-wrapper">
         <div className="table-header" ref={headerRef}>
           <div className="table-row">
-            <div className="table-cell" style={{ width: '50px' }}>№</div>
-            <div className="table-cell" style={{ width: '100px' }}>Кількість</div>
-            <div className="table-cell" style={{ width: '100px' }}>Серійний номер</div>
-            <div className="table-cell" style={{ width: '100px' }}>Ціна за одиницю</div>
-            <div className="table-cell" style={{ width: '100px' }}>Дата створення</div>
-            <div className="table-cell" style={{ width: '100px' }}>Категорія</div>
-            <div className="table-cell" style={{ width: '100px' }}>Дія</div>
+            <div className="table-cell" style={{width: '50px'}}>№</div>
+            <div className="table-cell" style={{width: '100px'}}>Кількість</div>
+            <div className="table-cell" style={{width: '100px'}}>Серійний номер</div>
+            <div className="table-cell" style={{width: '100px'}}>Ціна за одиницю</div>
+            <div className="table-cell" style={{width: '100px'}}>Дата створення</div>
+            <div className="table-cell" style={{width: '100px'}}>Категорія</div>
+            <div className="table-cell" style={{width: '100px'}}>Дія</div>
           </div>
         </div>
         <div className="table-body" ref={bodyRef} onScroll={syncScroll}>
@@ -186,7 +195,7 @@ const FormAssetVirtual = () => {
             width={colWidth}
             itemData={itemData}
           >
-            {({ index, style }) => (
+            {({index, style}) => (
               <RowVirtual
                 index={index}
                 style={style}
