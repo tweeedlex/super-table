@@ -1,4 +1,4 @@
-import { Modal, Button } from 'antd';
+import {Modal, Button, Input} from 'antd';
 
 type NestedArrayModalProps = {
   visible: boolean;
@@ -9,7 +9,6 @@ type NestedArrayModalProps = {
 const NestedArrayModal = ({ visible, onClose, nestedItems }: NestedArrayModalProps) => {
   return (
     <Modal
-      title="Nested Array Data"
       visible={visible}
       onCancel={onClose}
       footer={[
@@ -17,12 +16,64 @@ const NestedArrayModal = ({ visible, onClose, nestedItems }: NestedArrayModalPro
           Close
         </Button>
       ]}
+      width={800}
     >
-      {nestedItems.map((nestedItem, index) => (
-        <div key={index} style={{ display: 'flex', marginBottom: '8px' }}>
-          <div style={{ width: '100px', padding: '8px' }}>{nestedItem.value}</div>
+      <div className="table-wrapper">
+        <div className="table-header">
+          <div className="table-row">
+            <div className="table-cell" style={{width: '50px'}}>№</div>
+            <div className="table-cell" style={{width: '100px'}}>Кількість</div>
+            <div className="table-cell" style={{width: '100px'}}>Серійний номер</div>
+            <div className="table-cell" style={{width: '100px'}}>Ціна за одиницю</div>
+            <div className="table-cell" style={{width: '100px'}}>Дата створення</div>
+            <div className="table-cell" style={{width: '100px'}}>Категорія</div>
+          </div>
         </div>
-      ))}
+        <div className="table-body">
+          {nestedItems.map((nestedItem, index) => (
+            <>
+              <div className="table-row">
+                <div className="table-cell" style={{width: '50px'}}>{index + 1}</div>
+                <div className="table-cell" style={{width: '100px'}}>
+                  <Input
+                    type="number"
+                    min={0}
+                    defaultValue={nestedItem.value}
+                  />
+                </div>
+                <div className="table-cell" style={{width: '100px'}}>
+                  <Input
+                    type="number"
+                    min={0}
+                    defaultValue={nestedItem.value}
+                  />
+                </div>
+                <div className="table-cell" style={{width: '100px'}}>
+                  <Input
+                    type="number"
+                    min={0}
+                    defaultValue={nestedItem.value}
+                  />
+                </div>
+                <div className="table-cell" style={{width: '100px'}}>
+                  <Input
+                    type="number"
+                    min={0}
+                    defaultValue={nestedItem.value}
+                  />
+                </div>
+                <div className="table-cell" style={{width: '100px'}}>
+                  <Input
+                    type="number"
+                    min={0}
+                    defaultValue={nestedItem.value}
+                  />
+                </div>
+              </div>
+            </>
+          ))}
+        </div>
+      </div>
     </Modal>
   );
 };

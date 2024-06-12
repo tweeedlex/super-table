@@ -36,7 +36,7 @@ const RowVirtual = memo(({data, index, style}: RowProps) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = Number(e.target.value);
     setLocalValue(newValue);
-    // updateItem(index, newValue);
+    updateItem(index, newValue);
   };
 
   const handleDuplicate = () => {
@@ -135,7 +135,7 @@ const FormAssetVirtual = () => {
         value: i,
         isActive: i % 2 === 0
       })),
-      Array.from({length: 10}, (_, i) => ({
+      Array.from({length: 20}, (_, i) => ({
         value: i,
         isActive: i % 2 === 0
       })),
@@ -165,7 +165,7 @@ const FormAssetVirtual = () => {
     if (headerRef.current) {
       setColWidth(headerRef.current.offsetWidth);
     }
-  }, [headerRef.current]);
+  }, []);
 
   const syncScroll = () => {
     if (headerRef.current && bodyRef.current) {
@@ -195,13 +195,7 @@ const FormAssetVirtual = () => {
             width={colWidth}
             itemData={itemData}
           >
-            {({index, style}) => (
-              <RowVirtual
-                index={index}
-                style={style}
-                data={itemData}
-              />
-            )}
+            {RowVirtual}
           </List>
         </div>
       </div>
