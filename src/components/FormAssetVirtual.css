@@ -20,6 +20,10 @@
     width: 100%;
 }
 
+.table-row.active {
+    background-color: red;
+}
+
 .table-cell {
     padding: 8px;
     border-right: 1px solid #ccc;

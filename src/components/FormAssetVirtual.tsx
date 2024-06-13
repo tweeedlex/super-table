@@ -1,4 +1,4 @@
-import React, {memo, useState, useCallback, useRef, useLayoutEffect} from 'react';
+import React, {memo, useState, useCallback, useRef, useLayoutEffect, useEffect} from 'react';
 import memoize from 'memoize-one';
 import {FixedSizeList as List, areEqual} from 'react-window';
 import {Button, Input} from "antd";
@@ -21,14 +21,13 @@ type RowProps = {
     items: Item[];
     updateItem: (index: number, value: number) => void;
     addItemsAfter: (index: number, count: number, value: number) => void;
-    setData: React.Dispatch<React.SetStateAction<Item[]>>;
   };
   index: number;
   style: React.CSSProperties;
 };
 
 const RowVirtual = memo(({data, index, style}: RowProps) => {
-  const {items, updateItem, addItemsAfter, setData} = data;
+  const {items, updateItem, addItemsAfter} = data;
   const item = items[index];
   const [localValue, setLocalValue] = useState(item.value);
   const [isModalVisible1, setIsModalVisible1] = useState(false);
@@ -45,7 +44,7 @@ const RowVirtual = memo(({data, index, style}: RowProps) => {
   };
 
   return (
-    <div style={style} className="table-row">
+    <div style={style} className={`table-row ${item.isActive && "active"}`}>
       <div className="table-cell" style={{width: '50px'}}>{index + 1}</div>
       <div className="table-cell" style={{width: '100px'}}>
         <Input
@@ -113,11 +112,10 @@ const RowVirtual = memo(({data, index, style}: RowProps) => {
   );
 }, areEqual);
 
-const createItemData = memoize((items, updateItem, addItemsAfter, setData) => ({
+const createItemData = memoize((items, updateItem, addItemsAfter) => ({
   items,
   updateItem,
-  addItemsAfter,
-  setData
+  addItemsAfter
 }));
 
 const FormAssetVirtual = () => {
@@ -126,20 +124,21 @@ const FormAssetVirtual = () => {
     items: [
       Array.from({length: 10}, (_, i) => ({
         value: i,
-        isActive: i % 2 === 0
+        isActive: false
       })),
       Array.from({length: 20}, (_, i) => ({
         value: i,
-        isActive: i % 2 === 0
+        isActive: false
       })),
     ],
-    isActive: index % 2 === 0
+    isActive: false
   }));
 
   const [data, setData] = useState<Item[]>(initialData);
   const [colWidth, setColWidth] = useState<number>(0);
   const headerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef(null);
 
   const updateItem = useCallback((index: number, value: number) => {
     setData(prevData => {
@@ -174,7 +173,7 @@ const FormAssetVirtual = () => {
     });
   }, []);
 
-  const itemData = createItemData(data, updateItem, addItemsAfter, setData);
+  const itemData = createItemData(data, updateItem, addItemsAfter);
 
   useLayoutEffect(() => {
     if (headerRef.current) {
@@ -187,6 +186,31 @@ const FormAssetVirtual = () => {
       headerRef.current.scrollLeft = bodyRef.current.scrollLeft;
     }
   };
+
+  const handleSave = () => {
+    let firstEmpty: Item | null = null;
+    data.forEach(item => {
+      item.isActive = false;
+      if (item.value === 0 && !firstEmpty) {
+        firstEmpty = item;
+      }
+    })
+    if (firstEmpty) {
+      console.log('Empty field found:', firstEmpty, 'at index:', data.indexOf(firstEmpty));
+      listRef?.current?.scrollToItem(data.indexOf(firstEmpty));
+      setData(prevData => {
+        const newData = [...prevData];
+        newData[data.indexOf(firstEmpty)] = {
+          ...firstEmpty,
+          isActive: true
+        };
+        return newData;
+      })
+
+    } else {
+      console.log('All fields are filled');
+    }
+  }
 
   return (
     <div>
@@ -209,12 +233,14 @@ const FormAssetVirtual = () => {
             itemSize={35}
             width={colWidth}
             itemData={itemData}
+            ref={listRef}
             // itemKey={(index, data) => data.items[index].value}
           >
             {RowVirtual}
           </List>
         </div>
       </div>
+      <Button onClick={handleSave} style={{marginTop: 10}}>Save</Button>
     </div>
   );
 };
