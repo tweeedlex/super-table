@@ -1,248 +1,411 @@
-import React, {memo, useState, useCallback, useRef, useLayoutEffect, useEffect} from 'react';
+import React, {FC, memo, useCallback, useRef, useState} from 'react';
 import memoize from 'memoize-one';
-import {FixedSizeList as List, areEqual} from 'react-window';
-import {Button, Input} from "antd";
+import {areEqual, FixedSizeList as List} from 'react-window';
+import {Button, Col, DatePicker, Dropdown, Input, InputNumber, MenuProps, Popconfirm, Row, Select} from "antd";
 import './FormAssetVirtual.css';
-import NestedArrayModal from "./NestedArrayModal.tsx";
+import AutoSizer from "react-virtualized-auto-sizer";
+// import {IAssetSets} from "../../../type/IAsset.ts";
+import {Dayjs} from "dayjs";
+// import {mutateCategory} from "../../../helper/mutateDataForSelect.ts";
+// import {FetchLoadData} from "../../../helper/fetchLoadData.ts";
+// import {ICategory} from "../../../type/IType.ts";
+// import {getCategories} from "../../../api/types/types.ts";
+import {DashOutlined, DiffOutlined} from "@ant-design/icons";
+import ModalAssetPlacing from "./ModalAssetPlacing.tsx";
+import ModalAssetSets from "./ModalAssetSets.tsx";
+import {v4 as uuid} from "uuid";
 
-type NestedItem = {
-  value: number;
-  isActive: boolean;
-};
+const mutateCategory = (data: ICategory[]) => {
+    return data.map((item) => ({
+        label: item.name,
+        value: item.id
+    }))
+}
 
-type Item = {
-  value: number;
-  items: NestedItem[];
-  isActive: boolean;
-};
+type IAssetFormDetail = {
+    count: number,
+    serialNumber: string,
+    price: number | undefined,
+    dateOfManufacture: Dayjs | undefined,
+    categorySelect: number | undefined,
+    idDetail: string,
+    defaultWarehouse: IAssetSets[]
+}
 
-type RowProps = {
-  data: {
-    items: Item[];
-    updateItem: (index: number, value: number) => void;
-    addItemsAfter: (index: number, count: number, value: number) => void;
-  };
-  index: number;
-  style: React.CSSProperties;
-};
+type ICategory = {
+    id: number,
+    name: string
+}
+
+type IAssetSets = {
+    key: string,
+    warehouse: string,
+    rack: string,
+    shelf: string,
+    cell: string,
+    count: number,
+}
+
+interface RowDataProps {
+    items: IAssetFormDetail[];
+    updateItem: (index: number, key: string, value: number | string | Dayjs ) => void;
+    duplicateItem: (item: IAssetFormDetail, count: number) => void;
+    category: {
+        items: ICategory[] | undefined
+        loadingCategory: boolean
+    }
+    addSets: (item: IAssetSets[], idDetail: string | number) => void
+}
+
+interface RowProps {
+    data: RowDataProps
+    index: number;
+    style: React.CSSProperties;
+}
+
+interface DropdownAssetActionsProps {
+    duplicateItem: (item: IAssetFormDetail, count: number) => void;
+    item: IAssetFormDetail,
+    addSets: (item: IAssetSets[], idDetail: string | number) => void
+}
+
+const DropdownAssetActions: FC<DropdownAssetActionsProps> = ({duplicateItem, item, addSets}) => {
+    const [countAddAsset, setCountAddAsset] = useState<number>(1)
+    const [isAddAsset, setIsAddAsset] = useState(false)
+    const [isAssetPlacing, setIsAssetPlacing] = useState(false)
+    const [isAssetSets, setIsAssetSets] = useState(false)
+
+    const onClick: MenuProps['onClick'] = ({key}) => {
+        if (key === '0') {
+            setIsAssetPlacing(true)
+        } else if (key === '1') {
+            setIsAssetSets(true)
+        } else if (key === '2') {
+            setIsAddAsset(true)
+        }
+    };
+
+    const items: MenuProps['items'] = [
+        {
+            label: 'Розміщення',
+            key: '0',
+        },
+        {
+            label: 'Комплекти',
+            key: '1',
+        },
+        {
+            type: 'divider',
+        },
+        {
+            label: 'Дублювати майно',
+            key: '2',
+        },
+    ];
+
+    if (isAddAsset) {
+        return (
+            <Popconfirm
+                icon={<DiffOutlined/>}
+                title={'Дублювати майно'}
+                open={isAddAsset}
+                onCancel={() => setIsAddAsset(false)}
+                description={
+                    <InputNumber
+                        min={1}
+                        defaultValue={1}
+                        style={{width: '100%'}}
+                        value={countAddAsset}
+                        placeholder={'Кількість записів'}
+                        onChange={(value) => {
+                            if (value)
+                                setCountAddAsset(value)
+                        }}
+                    />
+                }
+                okText={'Дублювати'}
+                onConfirm={() => {
+                    duplicateItem(item, countAddAsset)
+                }}
+            >
+                <Button icon={<DashOutlined/>}/>
+            </Popconfirm>
+        )
+    }
+
+    if (isAssetPlacing) {
+        return (<ModalAssetPlacing visible={isAssetPlacing} onClose={() => setIsAssetPlacing(false)} addSets={addSets}
+                                   item={item} />)
+    }
+
+    if (isAssetSets) {
+        return (<ModalAssetSets visible={isAssetSets} onClose={() => setIsAssetSets(false)}/>)
+    }
+
+    return (
+        <Dropdown menu={{items, onClick}} trigger={['click']}>
+            <a onClick={(e) => e.preventDefault()}>
+                <Button icon={<DashOutlined/>}/>
+            </a>
+        </Dropdown>
+    )
+}
 
 const RowVirtual = memo(({data, index, style}: RowProps) => {
-  const {items, updateItem, addItemsAfter} = data;
-  const item = items[index];
-  const [localValue, setLocalValue] = useState(item.value);
-  const [isModalVisible1, setIsModalVisible1] = useState(false);
-  const [isModalVisible2, setIsModalVisible2] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = Number(e.target.value);
-    setLocalValue(newValue);
-    updateItem(index, newValue);
-  };
+    const {items, updateItem, duplicateItem, category, addSets} = data;
+    const item = items[index];
 
-  const handleDuplicate = () => {
-    addItemsAfter(index, localValue, item.value);
-  };
+    const handleChangeNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = Number(e.target.value);
+        updateItem(index, e.target.name, newValue);
+    };
 
-  return (
-    <div style={style} className={`table-row ${item.isActive && "active"}`}>
-      <div className="table-cell" style={{width: '50px'}}>{index + 1}</div>
-      <div className="table-cell" style={{width: '100px'}}>
-        <Input
-          type="number"
-          value={localValue}
-          onChange={handleChange}
-          min={0}
-        />
-      </div>
-      <div className="table-cell" style={{width: '100px'}}>
-        <Input
-          type="number"
-          value={localValue}
-          onChange={handleChange}
-          min={0}
-        />
-      </div>
-      <div className="table-cell" style={{width: '100px'}}>
-        <Input
-          type="number"
-          value={localValue}
-          onChange={handleChange}
-          min={0}
-        />
-      </div>
-      <div className="table-cell" style={{width: '100px'}}>
-        <Input
-          type="number"
-          value={localValue}
-          onChange={handleChange}
-          min={0}
-        />
-      </div>
-      <div className="table-cell" style={{width: '100px'}}>
-        <Input
-          type="number"
-          value={localValue}
-          onChange={handleChange}
-          min={0}
-        />
-      </div>
+    const handleChangeText = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = String(e.target.value);
+        updateItem(index, e.target.name, newValue);
+    };
 
-      <div className="table-cell" style={{width: '100px'}}>
-        <Button onClick={handleDuplicate}>Duplicate</Button>
-      </div>
-      <div className="table-cell" style={{width: '100px'}}>
-        <Button onClick={() => setIsModalVisible1(true)}>Modal 1</Button>
-      </div>
-      <div className="table-cell" style={{width: '100px'}}>
-        <Button onClick={() => setIsModalVisible2(true)}>Modal 2</Button>
-      </div>
+    const handleChangeDate = (e: Dayjs) => {
+        updateItem(index, 'dateOfManufacture', e);
+    };
 
-      <NestedArrayModal
-        visible={isModalVisible1}
-        onClose={() => setIsModalVisible1(false)}
-        nestedItems={item.items[0]}
-      />
+    // const handleChangeSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    //     const newValue = Number(e.target.value);
+    //     updateItem(index, e.target.name, newValue);
+    // };
 
-      <NestedArrayModal
-        visible={isModalVisible2}
-        onClose={() => setIsModalVisible2(false)}
-        nestedItems={item.items[1]}
-      />
-    </div>
-  );
+    return (
+        <div style={{
+            ...style,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            textAlign: 'center'
+        }}>
+            <Row style={{width: '100%', border: '1px solid #ccc'}}>
+                <Col span={1} style={{borderRight: '1px solid #ccc'}}>
+                    <div style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '15px',
+                        marginRight: '5px',
+                    }}>{index + 1}.
+                    </div>
+                </Col>
+                <Col span={4} style={{borderRight: '1px solid #ccc'}}>
+                    <Input
+                        name="count"
+                        placeholder={'Кількість'}
+                        type="number"
+                        value={item.count}
+                        onChange={handleChangeNumber}
+                        min={0}
+                    />
+                </Col>
+                <Col span={6} style={{borderRight: '1px solid #ccc'}}>
+                    <Input
+                        name='serialNumber'
+                        placeholder={'Серійний номер'}
+                        value={item.serialNumber}
+                        onChange={handleChangeText}
+                    />
+                </Col>
+                <Col span={4} style={{borderRight: '1px solid #ccc'}}>
+                    <Input
+                        name='price'
+                        placeholder={'Ціна за одиницю'}
+                        value={item.price}
+                        type="number"
+                        onChange={handleChangeNumber}
+                        min={0}
+                    />
+                </Col>
+                <Col span={4} style={{borderRight: '1px solid #ccc'}}>
+                    <DatePicker
+                        name="dateOfManufacture"
+                        value={item.dateOfManufacture}
+                        style={{width: '100%'}}
+                        placeholder="Дата створення"
+                        onChange={handleChangeDate}
+                    />
+                </Col>
+                <Col span={4} style={{borderRight: '1px solid #ccc'}}>
+                    <Select
+                        placeholder="Категорія"
+                        style={{width: '100%'}}
+                        options={category.items && mutateCategory(category.items)}
+                        loading={category.loadingCategory}
+                    />
+                </Col>
+                <Col span={1}>
+                    <DropdownAssetActions duplicateItem={duplicateItem} item={item} addSets={addSets}/>
+                </Col>
+            </Row>
+        </div>
+    );
 }, areEqual);
 
-const createItemData = memoize((items, updateItem, addItemsAfter) => ({
-  items,
-  updateItem,
-  addItemsAfter
-}));
+interface IPropsItemData {
+    items: IAssetFormDetail[]
+    updateItem: (index: number, key: string, value:  number | string | Dayjs) => void
+    duplicateItem: (item: IAssetFormDetail, count: number) => void
+    category: ICategory[] | undefined
+    loadingCategory: boolean
+    addSets: (item: IAssetSets[], idDetail: string | number) => void
+}
+
+
+const propsItemData: ({items, updateItem, duplicateItem, category, loadingCategory, addSets}: IPropsItemData) => {
+    duplicateItem: (item: IAssetFormDetail, count: number) => void;
+    updateItem: (index: number, key: string, value:  number | string | Dayjs) => void;
+    category: { items: ICategory[] | undefined; loadingCategory: boolean };
+    items: IAssetFormDetail[]
+    addSets: (item: IAssetSets[], idDetail: (string | number)) => void
+} = memoize(({items, updateItem, duplicateItem, category, loadingCategory, addSets}: IPropsItemData) => {
+    return {
+        items: items,
+        updateItem: updateItem,
+        duplicateItem: duplicateItem,
+        category: {
+            items: category,
+            loadingCategory: loadingCategory
+        },
+        addSets: addSets
+    }
+});
 
 const FormAssetVirtual = () => {
-  const initialData = Array.from({length: 2000}, (_, index) => ({
-    value: index,
-    items: [
-      Array.from({length: 10}, (_, i) => ({
-        value: i,
-        isActive: false
-      })),
-      Array.from({length: 20}, (_, i) => ({
-        value: i,
-        isActive: false
-      })),
-    ],
-    isActive: false
-  }));
+    // interface ArraySets {
+    //     key: string,
+    //     warehouse: string,
+    //     rack: string,
+    //     shelf: string,
+    //     cell: string,
+    //     count: number,
+    // }
 
-  const [data, setData] = useState<Item[]>(initialData);
-  const [colWidth, setColWidth] = useState<number>(0);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef(null);
+    const initialData: IAssetFormDetail[] = Array.from({length: 1000}, () => ({
+        count: 1,
+        serialNumber: 'Б/Н',
+        price: undefined,
+        dateOfManufacture: undefined,
+        categorySelect: undefined,
+        idDetail: uuid(),
+        defaultWarehouse: []
+    }));
 
-  const updateItem = useCallback((index: number, value: number) => {
-    setData(prevData => {
-      const newData = [...prevData];
-      newData[index] = {
-        ...newData[index],
-        value: value,
-      };
-      return newData;
+    const [data, setData] = useState(initialData);
+
+    const updateItem = useCallback((index: number, key: string, value:  number | string | Dayjs) => {
+        setData(prevData => {
+            const newData = [...prevData];
+            newData[index][key] = value;
+            return newData;
+        });
+    }, []);
+
+    const addSets = useCallback((item: IAssetSets[], idDetail: string | number) => {
+        setData(prevState => prevState.map(value => {
+            if (value.idDetail === idDetail) {
+                return {
+                    ...value,
+                    defaultWarehouse: item
+                }
+            } else {
+                return value
+            }
+        }))
+    }, [])
+
+    const duplicateItem = useCallback((item: IAssetFormDetail, count: number) => {
+        const initialData: IAssetFormDetail[] = Array.from({length: count}, () => ({
+            ...item,
+            idDetail: uuid()
+        }));
+        setData(prevState => [...prevState, ...initialData]);
+    }, [])
+
+    // const [isRefreshCategory, setIsRefreshCategory] = useState(false)
+    // const {data: category} = FetchLoadData<ICategory[]>({
+    //     fetchFunction: () =>
+    //         getCategories(),
+    //     isRefresh: isRefreshCategory,
+    //     setIsRefresh: setIsRefreshCategory
+    // })
+    const category = [
+        {id: 1, name: 'Категорія 1'},
+        {id: 2, name: 'Категорія 2'},
+        {id: 3, name: 'Категорія 3'},
+        {id: 4, name: 'Категорія 4'},
+    ]
+    const loadingCategory = false;
+
+    const itemData: RowDataProps = propsItemData({
+        items: data,
+        updateItem: updateItem,
+        duplicateItem: duplicateItem,
+        category: category,
+        loadingCategory: loadingCategory,
+        addSets: addSets
     });
-  }, []);
 
-  const addItemsAfter = useCallback((index: number, count: number, value: number) => {
-    setData(prevData => {
-      const newData = [...prevData];
-      const newItems = Array.from({length: count}, () => ({
-        value: value,
-        items: [
-          Array.from({length: 10}, (_, i) => ({
-            value: i,
-            isActive: i % 2 === 0
-          })),
-          Array.from({length: 20}, (_, i) => ({
-            value: i,
-            isActive: i % 2 === 0
-          })),
-        ],
-        isActive: value % 2 === 0
-      }));
-      newData.splice(index + 1, 0, ...newItems);
-      return newData;
-    });
-  }, []);
+    const listRef = useRef(null);
 
-  const itemData = createItemData(data, updateItem, addItemsAfter);
-
-  useLayoutEffect(() => {
-    if (headerRef.current) {
-      setColWidth(headerRef.current.offsetWidth);
-    }
-  }, []);
-
-  const syncScroll = () => {
-    if (headerRef.current && bodyRef.current) {
-      headerRef.current.scrollLeft = bodyRef.current.scrollLeft;
-    }
-  };
-
-  const handleSave = () => {
-    let firstEmpty: Item | null = null;
-    data.forEach(item => {
-      item.isActive = false;
-      if (item.value === 0 && !firstEmpty) {
-        firstEmpty = item;
-      }
-    })
-    if (firstEmpty) {
-      console.log('Empty field found:', firstEmpty, 'at index:', data.indexOf(firstEmpty));
-      listRef?.current?.scrollToItem(data.indexOf(firstEmpty));
-      setData(prevData => {
-        const newData = [...prevData];
-        newData[data.indexOf(firstEmpty)] = {
-          ...firstEmpty,
-          isActive: true
-        };
-        return newData;
-      })
-
-    } else {
-      console.log('All fields are filled');
-    }
-  }
-
-  return (
-    <div>
-      <div className="table-wrapper">
-        <div className="table-header" ref={headerRef}>
-          <div className="table-row">
-            <div className="table-cell" style={{width: '50px'}}>№</div>
-            <div className="table-cell" style={{width: '100px'}}>Кількість</div>
-            <div className="table-cell" style={{width: '100px'}}>Серійний номер</div>
-            <div className="table-cell" style={{width: '100px'}}>Ціна за одиницю</div>
-            <div className="table-cell" style={{width: '100px'}}>Дата створення</div>
-            <div className="table-cell" style={{width: '100px'}}>Категорія</div>
-            <div className="table-cell" style={{width: '100px'}}>Дія</div>
-          </div>
-        </div>
-        <div className="table-body" ref={bodyRef} onScroll={syncScroll}>
-          <List
-            height={600}
-            itemCount={data.length}
-            itemSize={35}
-            width={colWidth}
-            itemData={itemData}
-            ref={listRef}
-            // itemKey={(index, data) => data.items[index].value}
-          >
-            {RowVirtual}
-          </List>
-        </div>
-      </div>
-      <Button onClick={handleSave} style={{marginTop: 10}}>Save</Button>
-    </div>
-  );
+    return (
+        <>
+            <Row style={{width: 1800}}>
+                <Col span={12}>
+                    <Row style={{textAlign: 'center', marginRight: '17px', border: '1px solid #ccc'}}>
+                        <Col span={1} style={{borderRight: '1px solid #ccc'}}>
+                            №
+                        </Col>
+                        <Col span={4} style={{borderRight: '1px solid #ccc'}}>
+                            Кількість
+                        </Col>
+                        <Col span={6} style={{borderRight: '1px solid #ccc'}}>
+                            Серійний номер
+                        </Col>
+                        <Col span={4} style={{borderRight: '1px solid #ccc'}}>
+                            Ціна за одиницю
+                        </Col>
+                        <Col span={4} style={{borderRight: '1px solid #ccc'}}>
+                            Дата створення
+                        </Col>
+                        <Col span={4} style={{borderRight: '1px solid #ccc'}}>
+                            Категорія
+                        </Col>
+                        <Col span={1}>
+                            Дія
+                        </Col>
+                    </Row>
+                </Col>
+            </Row>
+            <Row style={{width: 1800}}>
+                <Col span={12} style={{height: '500px'}}>
+                    <AutoSizer>
+                        {({width, height}) =>
+                            <List
+                                style={{overflowY: 'scroll'}}
+                                ref={listRef}
+                                height={height}
+                                itemCount={data.length}
+                                itemSize={35}
+                                width={width}
+                                itemData={itemData}
+                                itemKey={(index) => index}
+                            >
+                                {RowVirtual}
+                            </List>
+                        }
+                    </AutoSizer>
+                </Col>
+            </Row>
+        </>
+    )
 };
 
 export default FormAssetVirtual;
