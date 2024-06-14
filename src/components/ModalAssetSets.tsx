@@ -7,7 +7,11 @@ type ModalAssetSetsProps = {
 
 const ModalAssetSets = ({visible, onClose}: ModalAssetSetsProps) => {
   return (
-    <Modal visible={visible} onClose={onClose}>
+    <Modal
+      title="Розміщення майна"
+      open={visible}
+      onCancel={onClose}
+    >
       ModalAssetSets
     </Modal>
   );

@@ -2,6 +2,7 @@ import React, {FC, memo, useCallback, useRef, useState} from 'react';
 import memoize from 'memoize-one';
 import {areEqual, FixedSizeList as List} from 'react-window';
 import {Button, Col, DatePicker, Dropdown, Input, InputNumber, MenuProps, Popconfirm, Row, Select} from "antd";
+import {SearchOutlined} from "@ant-design/icons";
 import './FormAssetVirtual.css';
 import AutoSizer from "react-virtualized-auto-sizer";
 // import {IAssetSets} from "../../../type/IAsset.ts";
@@ -148,6 +149,45 @@ const DropdownAssetActions: FC<DropdownAssetActionsProps> = ({duplicateItem, ite
                 <Button icon={<DashOutlined/>}/>
             </a>
         </Dropdown>
+    )
+}
+
+const SerialSearch = ({submitSerialSearch}) => {
+    const [serialToSearch, setSerialToSearch] = useState<string>('')
+
+    return (
+      <Dropdown
+        trigger={['click']}
+        dropdownRender={() => (
+          <div style={{
+            padding: "10px",
+            background: "#fff",
+            border: "1px solid #ccc",
+            borderRadius: "10px",
+            marginLeft: "-60px",
+            width: "220px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "end",
+            gap: "10px"
+          }}>
+            <Input
+              placeholder={"Серійний номер..."}
+              value={serialToSearch}
+              onChange={e => setSerialToSearch(e.target.value)}
+            />
+            <Button onClick={() => submitSerialSearch(serialToSearch)}>
+              <SearchOutlined />
+              Пошук
+            </Button>
+          </div>
+        )}
+      >
+        <a onClick={(e) => e.preventDefault()}>
+          <SearchOutlined style={{marginRight: 3}} />
+          Серійний номер
+        </a>
+      </Dropdown>
     )
 }
 
@@ -355,6 +395,24 @@ const FormAssetVirtual = () => {
 
     const listRef = useRef(null);
 
+    const submitSerialSearch = (serialToSearch: string) => {
+        console.log(serialToSearch)
+        data.forEach((item) => {
+            if (item.serialNumber === serialToSearch) {
+                listRef?.current?.scrollToItem(data.indexOf(item), "center")
+                setTimeout(() => {
+                    const element = document.querySelector(`[value="${serialToSearch}"][name="serialNumber"]`)
+                    if (element) {
+                        element.style.backgroundColor = '#53d0e1'
+                        setTimeout(() => {
+                            element.style.backgroundColor = ''
+                        }, 2000)
+                    }
+                }, 600)
+            }
+        });
+    }
+
     return (
         <>
             <Row style={{width: 1800}}>
@@ -366,8 +424,8 @@ const FormAssetVirtual = () => {
                         <Col span={4} style={{borderRight: '1px solid #ccc'}}>
                             Кількість
                         </Col>
-                        <Col span={6} style={{borderRight: '1px solid #ccc'}}>
-                            Серійний номер
+                        <Col span={6} style={{borderRight: '1px solid #ccc', cursor: "pointer"}} >
+                            <SerialSearch submitSerialSearch={submitSerialSearch} />
                         </Col>
                         <Col span={4} style={{borderRight: '1px solid #ccc'}}>
                             Ціна за одиницю
