@@ -1,4 +1,4 @@
-import React, {FC, memo, useCallback, useRef, useState} from 'react';
+import React, {FC, memo, useCallback, useState} from 'react';
 import memoize from 'memoize-one';
 import {areEqual, FixedSizeList as List} from 'react-window';
 import {Button, Col, DatePicker, Dropdown, Input, InputNumber, MenuProps, Popconfirm, Row, Select} from "antd";
@@ -15,6 +15,7 @@ import {DashOutlined, DiffOutlined} from "@ant-design/icons";
 import ModalAssetPlacing from "./ModalAssetPlacing.tsx";
 import ModalAssetSets from "./ModalAssetSets.tsx";
 import {v4 as uuid} from "uuid";
+import {highlightElement, IAssetFormDetail, IAssetSets} from "../App.tsx";
 
 const mutateCategory = (data: ICategory[]) => {
     return data.map((item) => ({
@@ -23,28 +24,9 @@ const mutateCategory = (data: ICategory[]) => {
     }))
 }
 
-type IAssetFormDetail = {
-    count: number,
-    serialNumber: string,
-    price: number | undefined,
-    dateOfManufacture: Dayjs | undefined,
-    categorySelect: number | undefined,
-    idDetail: string,
-    defaultWarehouse: IAssetSets[]
-}
-
 type ICategory = {
     id: number,
     name: string
-}
-
-type IAssetSets = {
-    key: string,
-    warehouse: string,
-    rack: string,
-    shelf: string,
-    cell: string,
-    count: number,
 }
 
 interface RowDataProps {
@@ -169,7 +151,7 @@ const SerialSearch = ({submitSerialSearch}) => {
             display: "flex",
             flexDirection: "column",
             alignItems: "end",
-            gap: "10px"
+            gap: "10px",
           }}>
             <Input
               placeholder={"Серійний номер..."}
@@ -216,14 +198,17 @@ const RowVirtual = memo(({data, index, style}: RowProps) => {
     // };
 
     return (
-        <div style={{
-            ...style,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            textAlign: 'center'
-        }}>
-            <Row style={{width: '100%', border: '1px solid #ccc'}}>
+        <div
+            style={{
+              ...style,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              textAlign: 'center'
+            }}
+        >
+            <Row style={{width: '100%', border: '1px solid #ccc', position: "relative"}}>
+                <div className={"highlight"} id={item.idDetail}></div>
                 <Col span={1} style={{borderRight: '1px solid #ccc'}}>
                     <div style={{
                         width: '100%',
@@ -318,27 +303,13 @@ const propsItemData: ({items, updateItem, duplicateItem, category, loadingCatego
     }
 });
 
-const FormAssetVirtual = () => {
-    // interface ArraySets {
-    //     key: string,
-    //     warehouse: string,
-    //     rack: string,
-    //     shelf: string,
-    //     cell: string,
-    //     count: number,
-    // }
+interface FormAssetVirtualProps {
+    data: IAssetFormDetail[];
+    setData: React.Dispatch<React.SetStateAction<IAssetFormDetail[]>>;
+    listRef?: React.RefObject<List>;
+}
 
-    const initialData: IAssetFormDetail[] = Array.from({length: 1000}, () => ({
-        count: 1,
-        serialNumber: 'Б/Н',
-        price: undefined,
-        dateOfManufacture: undefined,
-        categorySelect: undefined,
-        idDetail: uuid(),
-        defaultWarehouse: []
-    }));
-
-    const [data, setData] = useState(initialData);
+const FormAssetVirtual = ({data, setData, listRef}: FormAssetVirtualProps) => {
 
     const updateItem = useCallback((index: number, key: string, value:  number | string | Dayjs) => {
         setData(prevData => {
@@ -369,13 +340,6 @@ const FormAssetVirtual = () => {
         setData(prevState => [...prevState, ...initialData]);
     }, [])
 
-    // const [isRefreshCategory, setIsRefreshCategory] = useState(false)
-    // const {data: category} = FetchLoadData<ICategory[]>({
-    //     fetchFunction: () =>
-    //         getCategories(),
-    //     isRefresh: isRefreshCategory,
-    //     setIsRefresh: setIsRefreshCategory
-    // })
     const category = [
         {id: 1, name: 'Категорія 1'},
         {id: 2, name: 'Категорія 2'},
@@ -393,22 +357,12 @@ const FormAssetVirtual = () => {
         addSets: addSets
     });
 
-    const listRef = useRef(null);
-
     const submitSerialSearch = (serialToSearch: string) => {
         console.log(serialToSearch)
         data.forEach((item) => {
             if (item.serialNumber === serialToSearch) {
                 listRef?.current?.scrollToItem(data.indexOf(item), "center")
-                setTimeout(() => {
-                    const element = document.querySelector(`[value="${serialToSearch}"][name="serialNumber"]`)
-                    if (element) {
-                        element.style.backgroundColor = '#53d0e1'
-                        setTimeout(() => {
-                            element.style.backgroundColor = ''
-                        }, 2000)
-                    }
-                }, 600)
+                highlightElement(`[value="${serialToSearch}"][name="serialNumber"]`, '#53d0e1')
             }
         });
     }
